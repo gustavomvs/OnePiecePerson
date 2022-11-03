@@ -1,0 +1,115 @@
+@import "~office-ui-fabric-react/dist/sass/References.scss";
+
+.titlePerson {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.containerPerson {
+  gap: 10px;
+  display: flex;
+  max-width: 100%;
+  height: 200px;
+  align-items: center;
+  justify-content: space-around;
+  margin: 10px;
+}
+
+.imgPerson {
+  height: 100px;
+  width: 100%;
+  max-width: 100px;
+  max-height: 100px;
+  min-width: 100px;
+  object-fit: cover;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.divPerson {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.rickflex {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  text-align: center;
+}
+
+.rickimg {
+  width: 92%;
+}
+
+.ricktext {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.rickbottom {
+  margin-bottom: 20px;
+}
+
+.clickright,
+.clickright:after {
+  width: 150px;
+  height: 56px;
+  line-height: 58px;
+  font-size: 20px;
+  background: linear-gradient(45deg, transparent 5%, #ff013c 5%);
+  border: 0;
+  color: #fff;
+  letter-spacing: 3px;
+  box-shadow: 6px 0px 0px #00e6f6;
+  outline: transparent;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: 1s;
+}
+
+.clickleft,
+.clickleft:after {
+  width: 150px;
+  height: 56px;
+  line-height: 58px;
+  font-size: 20px;
+  background: linear-gradient(-45deg, transparent 5%, #ff013c 5%);
+  border: 0;
+  color: #fff;
+  letter-spacing: 3px;
+  box-shadow: -6px 0px 0px #00e6f6;
+  outline: transparent;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: 1s;
+}
+
+.rickflex2 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+*::-webkit-scrollbar {
+  width: 3px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #cecece;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #f5f5f5;
+  border-radius: 200px;
+  border: 1px double #000000;
+}
