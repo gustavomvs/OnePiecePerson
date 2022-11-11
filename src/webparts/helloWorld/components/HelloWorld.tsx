@@ -2,26 +2,24 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import styles from "./HelloWorld.module.scss";
 import { IHelloWorldProps } from "./IHelloWorldProps";
-import { IItem, Item } from "@pnp/sp/items/types";
+import { IItem } from "@pnp/sp/items/types";
 import { useBoolean } from "@fluentui/react-hooks";
 import { IAttachmentInfo } from "@pnp/sp/attachments";
+import { Dialog, DialogFooter, DialogType } from "@fluentui/react/lib/Dialog";
 import {
   TextField,
   DefaultButton,
   ITextFieldStyles,
-  Stack,
   Dropdown,
   IDropdownOption,
   defaultDatePickerStrings,
   DatePicker,
   IDropdownStyles,
   Panel,
-  Modal,
   getTheme,
   mergeStyleSets,
   FontWeights,
   IIconProps,
-  PrimaryButton,
 } from "@fluentui/react";
 import { spfi, SPFx as spSPFx } from "@pnp/sp";
 import "@pnp/sp/webs";
@@ -29,7 +27,10 @@ import "@pnp/sp/lists";
 import "@pnp/sp/items";
 import "@pnp/sp/attachments";
 import { IItemAddResult } from "@pnp/sp/items";
-import { IconButton } from "office-ui-fabric-react";
+import {
+  FilePicker,
+  IFilePickerResult,
+} from "@pnp/spfx-controls-react/lib/FilePicker";
 
 const dropdownStyles: Partial<IDropdownStyles> = {
   dropdown: { width: "100%", marginBottom: "5px" },
@@ -39,8 +40,6 @@ const textFieldStyles: Partial<ITextFieldStyles> = {
   fieldGroup: { width: "100%", marginBottom: "5px" },
 };
 
-const cancelIcon: IIconProps = { iconName: "Cancel" };
-
 const theme = getTheme();
 
 const contentStyles = mergeStyleSets({
@@ -48,7 +47,21 @@ const contentStyles = mergeStyleSets({
     width: "90%",
     heigth: "90%",
     display: "flex",
+    overflowY: "hidden",
   },
+
+  minimo: [
+    // eslint-disable-next-line deprecation/deprecation
+    theme.fonts.xLargePlus,
+    {
+      gap: "10px",
+      display: "flex",
+      width: "120px",
+      height: "120px",
+      alignItems: "center",
+      justifyContent: "spaceAround",
+    },
+  ],
 
   header: [
     // eslint-disable-next-line deprecation/deprecation
@@ -76,18 +89,17 @@ const contentStyles = mergeStyleSets({
   },
 });
 
-const iconButtonStyles = {
-  root: {
-    color: theme.palette.neutralPrimary,
-    marginLeft: "auto",
-    marginTop: "4px",
-    marginRight: "2px",
-  },
-  rootHovered: {
-    color: theme.palette.neutralDark,
-  },
+const addIcon: IIconProps = { iconName: "Add" };
+
+const dialogContentProps = {
+  type: DialogType.normal,
+  title: "Deseja mesmo apagar o Personagem??",
 };
 
+const dialogModalProps = {
+  isBlocking: true,
+  styles: { main: { maxWidth: 450 } },
+};
 const optionsLang: IDropdownOption[] = [];
 
 const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
@@ -96,17 +108,15 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
   const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] =
     useBoolean(false);
 
-  const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] =
-    useBoolean(false);
+  const [
+    isOpenCreate,
+    { setTrue: openPanelCreate, setFalse: dismissPanelCreate },
+  ] = useBoolean(false);
 
-  const [isModalOpenRick, { setTrue: showModalRick, setFalse: hideModalRick }] =
-    useBoolean(false);
+  const [isDialogVisible, setIsDialogVisible] = React.useState(false);
 
   const [db, setdb] = useState([]);
   const [dbLang, setdbLang] = useState([]);
-  const [rmdb, setrmdb] = useState([]);
-
-  const [pages, setPages] = useState(1);
 
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
@@ -119,14 +129,13 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
   const [updateDate, setUpdateDate] = useState<Date | undefined>();
   const [updateLang, setUpdateLang] = React.useState<IDropdownOption>();
 
-  const [createLang, setCreateLang] = useState("");
-
-  const [deletedUserId, setDeletedUserId] = useState("");
+  const [file, setFile] = useState([]);
 
   const meuInit = async () => {
     const items: any[] = await sp.web.lists.getByTitle("Person").items();
     setdb(items);
   };
+
   const myLangInit = async () => {
     const langListGlobal: any[] = await sp.web.lists
       .getByTitle("Lang List")
@@ -140,37 +149,18 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
     setdbLang(langListGlobal);
   };
 
-  const myRickInit = () => {
-    fetch(`https://rickandmortyapi.com/api/character?page=${pages}`)
-      .then((response) => response.json())
-      .then((response) => setrmdb(response.results));
-  };
+  const onDismiss = React.useCallback(
+    (ev?: React.SyntheticEvent | KeyboardEvent) => {
+      if (ev) {
+        // Instead of closing the panel immediately, cancel that action and show a dialog
+        ev.preventDefault();
+        setIsDialogVisible(true);
+      }
+    },
+    []
+  );
 
-  document.addEventListener("keydown", (event) => {
-    const keyName = event.key;
-    if (keyName === "Escape") {
-      hideModalRick();
-      hideModal();
-    }
-  });
-
-  const rickandmortymore = () => {
-    if (pages < 43) {
-      setPages(pages + 1);
-    }
-    myRickInit();
-  };
-
-  const rickandmortyless = () => {
-    if (pages > 1) {
-      setPages(pages - 1);
-    }
-    myRickInit();
-  };
-
-  const leituraDeIdiomas = async () => {
-    showModal();
-  };
+  const hideDialog = React.useCallback(() => setIsDialogVisible(false), []);
 
   const changeName = React.useCallback(
     (
@@ -228,26 +218,6 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
     setUpdateLang(item);
   };
 
-  const changeDeleteValue = React.useCallback(
-    (
-      event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-      newValue?: string
-    ) => {
-      setDeletedUserId(newValue || "");
-    },
-    []
-  );
-
-  const changeCreateLang = React.useCallback(
-    (
-      event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-      newValue?: string
-    ) => {
-      setCreateLang(newValue || "");
-    },
-    []
-  );
-
   const createValue = async () => {
     const resultLang = dbLang.filter((e) => e.Title === lang.text);
     const value = {
@@ -262,11 +232,9 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
     meuInit();
     setName("");
     setImage("");
-  };
-
-  const readValue = async () => {
-    meuInit();
-    console.log(db);
+    setDate(undefined);
+    setLang(undefined);
+    dismissPanelCreate();
   };
 
   const updateValue = async () => {
@@ -282,17 +250,12 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
       LinguagemId: filterLang[0]?.Id ? filterLang[0]?.Id : item?.LinguagemID,
     });
     meuInit();
+    dismissPanel();
   };
 
   const deleteValue = async () => {
     const list = sp.web.lists.getByTitle("Person");
-    await list.items.getById(Number(deletedUserId)).delete();
-    meuInit();
-  };
-
-  const deleteOneClcik = async (id: number) => {
-    const list = sp.web.lists.getByTitle("Person");
-    await list.items.getById(id).delete();
+    await list.items.getById(Number(updateUserId)).delete();
     meuInit();
   };
 
@@ -312,160 +275,94 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
     setLang(dbLangUpdate[0].Title);
   };
 
-  const createLangdb = () => {
-    // dbLang.map((e) => {
-    //   console.log(
-    //     e.Title.normalize("NFD")
-    //       .replace(/[\u0300-\u036f]/g, "")
-    //       .toLowerCase()
-    //   );
-    // });
-  };
+  // PEGANDO OS DADOS PARA O BANCO DE DADOS!
 
   useEffect(() => {
     meuInit();
     myLangInit();
-    myRickInit();
-    // addFile();
-    // readFile();
-    // pickAllFile();
-    // updateFile();
-    //deleteFile();
-    //recycleFile();
   }, []);
 
-  useEffect(() => {
-    myRickInit();
-  }, [pages]);
-
-  const pickFile: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
-
   const pickAllFile = async () => {
+    const pickFile: IItem = sp.web.lists
+      .getByTitle("Person")
+      .items.getById(Number(updateUserId));
     const file: IAttachmentInfo[] = await pickFile.attachmentFiles();
-    console.log(file);
+    setAllFile(file);
+    meuInit();
   };
 
-  const addFile = async () => {
-    const file: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
-    await file.attachmentFiles.add("file3.txt", "Here is my content3");
-    await file.attachmentFiles.add("file4.txt", "Here is my content4");
-    const info: IAttachmentInfo[] = await file.attachmentFiles();
-  };
+  // const updateFile = async () => {
+  //   const item: IItem = sp.web.lists
+  //     .getByTitle("Banner")
+  //     .items.getById(1);
+  //   await item.attachmentFiles
+  //     .getByName(`banner.png`)
+  //     .setContent(`${newContent}`);
+  //   setUpdateNameFile("");
+  //   setNewContent("");
+  // };
 
-  const readFile = async () => {
-    const item: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
-    const text = await item.attachmentFiles.getByName("file2.txt").getText();
-    console.log(text);
-  };
+  // const deleteFile = async (name: string) => {
+  //   const item: IItem = sp.web.lists
+  //     .getByTitle("Person")
+  //     .items.getById(Number(updateUserId));
+  //   await item.attachmentFiles.getByName(name).delete();
+  // };
 
-  const updateFile = async () => {
-    const item: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
-    await item.attachmentFiles
-      .getByName("file2.txt")
-      .setContent("Testando novo conteudo");
-  };
+  // const recycleFile = async () => {
+  //   const item: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
+  //   await item.attachmentFiles.getByName("file3.txt").recycle();
+  // };
 
-  const deleteFile = async () => {
-    const item: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
-    await item.attachmentFiles.getByName("file4.txt").delete();
-  };
-
-  const recycleFile = async () => {
-    const item: IItem = sp.web.lists.getByTitle("Person").items.getById(26);
-    await item.attachmentFiles.getByName("file3.txt").recycle();
+  const onFilePickerSave = async (filePickerResult: IFilePickerResult[]) => {
+    const item: IItem = sp.web.lists
+      .getByTitle("Person")
+      .items.getById(Number(updateUserId));
+    const oFile = filePickerResult;
+    oFile.map(async (e) => {
+      const fileResultContent = await e.downloadFileContent();
+      await item.attachmentFiles.add(fileResultContent.name, fileResultContent);
+    });
   };
 
   return (
     <div>
-      <Panel
-        headerText="Editar Dados"
-        isOpen={isOpen}
-        onDismiss={dismissPanel}
-        closeButtonAriaLabel="Close"
-      >
-        <h2>Update</h2>
-        <TextField
-          onChange={changeUpdateName}
-          label="Update User ID"
-          value={updateUserId}
-          styles={textFieldStyles}
-          placeholder="Insira o ID do item a ser editado."
-          readOnly
-        />
-        <TextField
-          onChange={changeUpdateName}
-          label="Nome"
-          value={updateName}
-          styles={textFieldStyles}
-        />
-        <TextField
-          onChange={changeUpdateImage}
-          label="Imagem"
-          value={updateImage}
-          styles={textFieldStyles}
-          placeholder="Imagem Url"
-        />
-        <div>
-          <DatePicker
-            onChange={() => console.log("Hello")}
-            label="Aniversário"
-            allowTextInput
-            ariaLabel="Select a date"
-            value={updateDate}
-            onSelectDate={
-              setUpdateDate as (updatedate: Date | null | undefined) => void
-            }
-            strings={defaultDatePickerStrings}
-          />
-        </div>
-        <Dropdown
-          label="Idioma"
-          selectedKey={lang ? lang.key : undefined}
-          onChange={changeUpdateLang}
-          placeholder={`${lang}`}
-          options={optionsLang}
-          styles={dropdownStyles}
-        />
-        <DefaultButton onClick={updateValue} text="Update" />
-      </Panel>
-      <button onClick={leituraDeIdiomas}>Leitura de Idiomas</button>
-      <Modal isOpen={isModalOpen} isModeless={true}>
-        <div className={contentStyles.header}>
-          <IconButton
-            styles={iconButtonStyles}
-            iconProps={cancelIcon}
-            ariaLabel="Close popup modal"
-            onClick={hideModal}
-          />
-        </div>
-        <div className={contentStyles.body}>
-          {dbLang.map((e) => {
-            return <p key={e.Id}>{e.Title}</p>;
+      <div className={styles.personcenter}>
+        <section className={styles.containerPerson}>
+          {db.map((item) => {
+            return (
+              <div className={styles.divPerson} key={item.Id}>
+                <img className={styles.imgPerson} src={item.Imagem} />
+                <h2 className={styles.titlePerson}>{item.Title}</h2>
+                <DefaultButton
+                  onClick={() => {
+                    changeValue(item.Id);
+                    openPanel();
+                  }}
+                  text="Atualizar"
+                />
+              </div>
+            );
           })}
-        </div>
-      </Modal>
-      <section className={styles.containerPerson}>
-        {db.map((item) => {
-          return (
-            <div className={styles.divPerson} key={item.Id}>
-              <img
-                className={styles.imgPerson}
-                onClick={() => {
-                  changeValue(item.Id);
-                  openPanel();
-                }}
-                src={item.Imagem}
-              />
-              <h2 className={styles.titlePerson}>{item.Title}</h2>
-              <DefaultButton
-                onClick={() => deleteOneClcik(item.Id)}
-                text="Delete"
-              />
-            </div>
-          );
-        })}
-      </section>
-      <Stack>
+          <DefaultButton
+            onClick={openPanelCreate}
+            className={styles.buttonMore}
+            iconProps={addIcon}
+          />
+        </section>
+      </div>
+
+      {/* PANELS */}
+
+      {/* CREATE */}
+
+      <Panel
+        headerText="Criar Dados"
+        isOpen={isOpenCreate}
+        onDismiss={dismissPanelCreate}
+        closeButtonAriaLabel="Close"
+        isLightDismiss
+      >
         <h2>Create</h2>
         <TextField
           type="text"
@@ -501,73 +398,105 @@ const HelloWorld: React.FunctionComponent<IHelloWorldProps> = (props) => {
           styles={dropdownStyles}
         />
         <DefaultButton onClick={createValue} text="Create" />
-        <h2>Read</h2>
-        <DefaultButton onClick={readValue} text="Read" />
-        <h2>Delete</h2>
-        <TextField
-          onChange={changeDeleteValue}
-          label="Delete User"
-          value={deletedUserId}
-          styles={textFieldStyles}
-          placeholder="Insira o ID a ser deletado"
-        />
-        <DefaultButton onClick={deleteValue} text="Delete" />
-        <Modal
-          isOpen={isModalOpenRick}
-          isModeless={true}
-          containerClassName={contentStyles.containerRick}
+      </Panel>
+
+      {/* UPDATE */}
+      <div>
+        <Panel
+          className={styles.minIndex}
+          headerText="Editar Dados"
+          onDismiss={dismissPanel}
+          isOpen={isOpen}
+          closeButtonAriaLabel="Close"
         >
-          <div className={contentStyles.header}>
-            <IconButton
-              styles={iconButtonStyles}
-              iconProps={cancelIcon}
-              ariaLabel="Close popup modal"
-              onClick={hideModalRick}
+          <button onClick={pickAllFile}>Teste</button>
+          <h2>Atualizar Dados</h2>
+          {/* <TextField
+            onChange={changeUpdateName}
+            label="Update User ID"
+            value={updateUserId}
+            styles={textFieldStyles}
+            placeholder="Insira o ID do item a ser editado."
+            readOnly
+          /> */}
+          <TextField
+            onChange={changeUpdateName}
+            label="Nome"
+            value={updateName}
+            styles={textFieldStyles}
+          />
+          <TextField
+            onChange={changeUpdateImage}
+            label="Imagem"
+            value={updateImage}
+            styles={textFieldStyles}
+            placeholder="Imagem Url"
+          />
+          <div>
+            <DatePicker
+              label="Aniversário"
+              allowTextInput
+              ariaLabel="Select a date"
+              value={updateDate}
+              onSelectDate={
+                setUpdateDate as (updatedate: Date | null | undefined) => void
+              }
+              strings={defaultDatePickerStrings}
             />
           </div>
-          <div>
-            <div className={styles.rickflex}>
-              {rmdb.map((e) => {
-                return (
-                  <div className={styles.rickbottom} key={e.id}>
-                    <div className={styles.ricktext}>{e.name}</div>
-                    <img className={styles.rickimg} src={e.image} alt="" />
-                  </div>
-                );
-              })}
-            </div>
-            <div className={styles.rickflex2}>
-              <DefaultButton
-                onClick={() => rickandmortyless()}
-                className={styles.clickright}
-                text="Retornar"
-              />
-              <DefaultButton
-                onClick={() => rickandmortymore()}
-                className={styles.clickleft}
-                text="Avançar"
-              />
-            </div>
+          <Dropdown
+            label="Idioma"
+            selectedKey={lang ? lang.key : undefined}
+            onChange={changeUpdateLang}
+            placeholder={`${lang}`}
+            options={optionsLang}
+            styles={dropdownStyles}
+          />
+          <div className={styles.divisor}>
+            <DefaultButton onClick={updateValue} text="Atualizar" />
+            <button className={styles.botaoDelete} onClick={onDismiss}>
+              Deletar
+            </button>
           </div>
-        </Modal>
-        <DefaultButton
-          onClick={() => {
-            showModalRick();
-          }}
-          text="Hey Rick"
-        />
-      </Stack>
-      <Stack>
-        <h1>Criar Idioma</h1>
-        <TextField
-          onChange={changeCreateLang}
-          label="Idioma"
-          value={createLang}
-          styles={textFieldStyles}
-          placeholder="Insira o idioma"
-        />
-        <DefaultButton onClick={createLangdb} text="Criar Idioma" />
-      </Stack>
+          <div>
+            <FilePicker
+              bingAPIKey="<BING API KEY>"
+              accepts={[
+                ".gif",
+                ".jpg",
+                ".jpeg",
+                ".bmp",
+                ".dib",
+                ".tif",
+                ".tiff",
+                ".ico",
+                ".png",
+                ".jxr",
+                ".svg",
+              ]}
+              buttonIcon="FileImage"
+              onSave={(filePickerResult: IFilePickerResult[]) => {
+                onFilePickerSave(filePickerResult);
+              }}
+              onChange={(filePickerResult: IFilePickerResult[]) => {
+                onFilePickerSave(filePickerResult);
+              }}
+              context={props.context}
+            />
+          </div>
+          <Dialog
+            hidden={!isDialogVisible}
+            onDismiss={hideDialog}
+            dialogContentProps={dialogContentProps}
+            modalProps={dialogModalProps}
+          >
+            <DialogFooter>
+              <DefaultButton onClick={deleteValue} text="Yes" />
+              <DefaultButton onClick={hideDialog} text="No" />
+            </DialogFooter>
+          </Dialog>
+        </Panel>
+      </div>
     </div>
   );
 };
